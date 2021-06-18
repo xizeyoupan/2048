@@ -3,3 +3,8 @@ Makefile.win
 项目1.exe
 项目1.layout
 main.o
+项目1_private.h
+项目1_private.rc
+项目1_private.res
+项目1.ico
+record.txt
