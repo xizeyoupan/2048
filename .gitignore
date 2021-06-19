@@ -1,6 +1,6 @@
 Makefile.win
 项目1.dev
-项目1.exe
+*.exe
 项目1.layout
 main.o
 项目1_private.h
