@@ -3,26 +3,20 @@
 #include <stdlib.h>
 #include <time.h>
 #include <math.h>
-#include <ege/sys_edit.h>
 
 #define DEFAULT_COLOR EGERGB(0xCD, 0xC1, 0xB4)
 #define BACKGROUND_COLOR EGERGB(0xB7, 0xAD, 0xA0)
 #define BLOCK_FONT_COLOR EGERGB(0x77, 0x6E, 0x65)
 
-#define BOOL int
-#define TRUE 1
-#define FALSE 0
-
 #define SPACING 5        //格子间距
-#define LG_LENGTH 150   //大格子长度
-#define SM_LENGTH 72    //小格子长度
+#define LG_LENGTH 150    //大格子长度
+#define SM_LENGTH 72     //小格子长度
 #define FPS 144
 
 #define RECORD_FILE "record.dat"
 
 BOOL moved = FALSE;
 int score = 0;
-//int game_mode = 1;
 int out_layer[4][4];
 int inside_layer[4][4];
 int cheat_count = 0;
@@ -88,8 +82,6 @@ int get_random_empty_block() {
     if (number == 0) return -1;
     return empty_block[_random(0, number)];
 }
-
-
 
 
 PIMAGE get_new_block(int length, int i, int j) {
@@ -171,17 +163,16 @@ void add_random() {
     }
 }
 
-BOOL is_over() {
-    BOOL over = TRUE;
+int is_over() {
 
     if (get_random_empty_block() != -1) {
-        return FALSE;
+        return 0;
     }
 
     for (int i = 0; i < 4; i = i + 3) {
         for (int j = 1; j < 4; j++) {
             if (out_layer[i][j] == out_layer[i][j - 1] || out_layer[j][i] == out_layer[j - 1][i] || inside_layer[i][j] == inside_layer[i][j - 1] || inside_layer[j][i] == inside_layer[j - 1][i]) {
-                over = FALSE;
+                return 0;
             }
         }
     }
@@ -194,12 +185,25 @@ BOOL is_over() {
                 (inside_layer[i][j] == inside_layer[i][j - 1]) ||
                 (inside_layer[i][j] == inside_layer[i][j + 1])
             ) {
-                over = FALSE;
+                return  0;
             }
         }
     }
 
-    return over;
+    if (
+        (inside_layer[0][0] == inside_layer[0][1] && out_layer[0][1] == 2 * inside_layer[0][0]) ||
+        (inside_layer[0][2] == inside_layer[0][3] && out_layer[0][3] == 2 * inside_layer[0][2]) ||
+        (inside_layer[0][3] == inside_layer[1][3] && out_layer[1][3] == 2 * inside_layer[1][3]) ||
+        (inside_layer[2][3] == inside_layer[3][3] && out_layer[2][3] == 2 * inside_layer[3][3]) ||
+        (inside_layer[3][3] == inside_layer[3][2] && out_layer[3][2] == 2 * inside_layer[3][2]) ||
+        (inside_layer[3][0] == inside_layer[3][1] && out_layer[3][1] == 2 * inside_layer[3][1]) ||
+        (inside_layer[3][0] == inside_layer[2][0] && out_layer[2][0] == 2 * inside_layer[2][0]) ||
+        (inside_layer[0][0] == inside_layer[1][0] && out_layer[1][0] == 2 * inside_layer[1][0])
+    ) {
+        return 0;
+    }
+
+    return 1;
 }
 
 void update() {
@@ -215,7 +219,6 @@ void update() {
             delimage(rect);
         }
     }
-
 
     for (int i = 0; i < 4; i++) {
         for (int j = 0; j < 4; j++) {
@@ -234,7 +237,6 @@ void move_aside(int direction, int layer[4][4], int t) {
                 if (layer[cur][t] == 0) {
                     continue;
                 }
-
                 for (int i = cur; i > 0; i--) {
                     if (layer[i - 1][t] == 0) {
                         layer[i - 1][t] = layer[i][t];
@@ -376,7 +378,6 @@ void move_right(int layer[4][4], int row) {
 
         for (int i = cur; i < 3; i++) {
             if (layer[row][i + 1] == 0) {
-                //冒泡
                 layer[row][i + 1] = layer[row][i];
                 layer[row][i] = 0;
                 moved = TRUE;
@@ -519,6 +520,9 @@ void init_game() {
     setfont(25, 0, "黑体", p);
     settextjustify(CENTER_TEXT, CENTER_TEXT, p);
     outtextxy(65, 25, "重新开始", p);
+    setcolor(EGERGB(0x29, 0x29, 0x35));
+    setfont(20, 0, "黑体");
+    xyprintf(220, 800, "快速点按衣服以进入分数面板");
     putimage(270, 720, p);
     delimage(p);
 
@@ -620,6 +624,9 @@ void gameMode() {
     setfont(25, 0, "黑体", p);
     settextjustify(CENTER_TEXT, CENTER_TEXT, p);
     outtextxy(65, 25, "重新开始", p);
+    setcolor(EGERGB(0x29, 0x29, 0x35));
+    setfont(20, 0, "黑体");
+    xyprintf(220, 800, "快速点按衣服以进入分数面板");
     putimage(270, 720, p);
     delimage(p);
 
@@ -776,6 +783,7 @@ void delete_player() {
     }
 
 }
+
 void manageMode() {
 
     put_record();
@@ -799,12 +807,12 @@ void manageMode() {
             }
         }
     }
-
 }
+
 int main() {
 
     initgraph(640, 960);
-    setcaption("2048");
+    setcaption("__");
     setbkcolor(BACKGROUND_COLOR);
 
     init_game();
