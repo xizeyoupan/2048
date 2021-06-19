@@ -18,17 +18,17 @@
 #define SM_LENGTH 72    //小格子长度
 #define FPS 144
 
+#define RECORD_FILE "record.dat"
+
 BOOL moved = FALSE;
 int score = 0;
-int game_mode = 1;
+//int game_mode = 1;
 int out_layer[4][4];
 int inside_layer[4][4];
 int cheat_count = 0;
 int manage_count = 0;
-int is_fresh = 0;
-FILE *fp;
 
-typedef struct Player {
+typedef struct {
     char username[100];
     int record;
 } Player;
@@ -512,8 +512,7 @@ int put_score() {
 }
 
 void init_game() {
-    memset(out_layer, 0, sizeof(out_layer));
-    memset(inside_layer, 0, sizeof(inside_layer));
+
     PIMAGE p = newimage(130, 50);
     setbkcolor(BACKGROUND_COLOR, p);
     setcolor(EGERGB(0x29, 0x29, 0x35), p);
@@ -527,106 +526,282 @@ void init_game() {
     getimage_pngfile(Azusa, "./assets/anime_girl_PNG73.png");
     putimage_withalpha(nullptr, Azusa, 0, (LG_LENGTH + SPACING) * 4 + SPACING * 4);
     delimage(Azusa);
+
+    memset(out_layer, 0, sizeof(out_layer));
+    memset(inside_layer, 0, sizeof(inside_layer));
     score = 0;
-    is_fresh = 0;
     update();
     add_random();
 }
 
+void write_players(Player *p, int size) {
+    FILE *fp;
+    fp = fopen(RECORD_FILE, "wb");
+    if (fp == NULL) {
+        printf("open file error");
+        exit(114514);
+    }
+    for (int i = 0; i < size; i++) {
+        fwrite(&p[i], sizeof(Player), 1, fp);
+    }
+
+    fflush(fp);
+    fclose(fp);
+}
+
+int read_player(Player players[]) {
+    FILE *fp;
+    fp = fopen(RECORD_FILE, "rb");
+    if (fp == NULL) {
+        fp = fopen(RECORD_FILE, "a+b");
+        rewind(fp);
+    }
+
+    int i = 0;
+    while (fread(&players[i], sizeof(Player), 1, fp) == 1) {
+        i++;
+    }
+
+    fclose(fp);
+    return i;
+}
+
+
 void write_to_file() {
     char name[50];
-    scanf("%s", name);
-    Player newplayer;
-    newplayer.record = score;
-    strcpy(newplayer.username, name);
-    fwrite(&newplayer, sizeof(struct Player), 1, fp);
-    fflush(fp);
+    memset(name, 0, sizeof(name));
+    do {
+        inputbox_getline("记录", "输入id（最大20个字母或10个汉字），输完后按回车", name, 20);
+        cleardevice();
+    } while (strcmp(name, "") == 0);
+
+    Player players[1000];
+
+    int number = read_player(players);
+    for (int i = 0; i < number; i++) {
+        if (strcmp(players[i].username, name) == 0) {
+            char text[100];
+            memset(text, 0, sizeof(text));
+            char _score[30];
+            itoa(players[i].record, _score, 10);
+            if (players[i].record > score) {
+                strcat(text, "你上次的成绩是:");
+                strcat(text, _score);
+                strcat(text, ",竟然退步了呢 ヾ(?ω?`)o");
+                MessageBox(0, text, "呃呃", 0);
+
+            } else if (players[i].record ==	score) {
+                MessageBox(0, "哼，和上次记录打平 (*￣3￣)╭", "呃呃", 0);
+
+            } else {
+                MessageBox(0, "牜，破纪录了", "呃呃", 0);
+                players[i].record = score;
+                write_players(players, number);
+            }
+            init_game();
+            return;
+        }
+    }
+
+    players[number].record = score;
+    strcat(players[number].username, name);
+    write_players(players, number + 1);
+    MessageBox(0, "这是一个新的id (～￣▽￣)～", "呃呃", 0);
+
+    init_game();
 }
 
 void gameMode() {
-    if (cheat_count == 8) {
-        MessageBox(NULL, "作弊模式已开启", "呃呃", NULL);
-        cheat_count++;
-    }
-    if (manage_count == 5) {
-        game_mode = 0;
-        manage_count++;
-    }
+    cleardevice();
 
-    mouse_msg msg = {0};
+    PIMAGE p = newimage(130, 50);
+    setbkcolor(BACKGROUND_COLOR, p);
+    setcolor(EGERGB(0x29, 0x29, 0x35), p);
+    setfont(25, 0, "黑体", p);
+    settextjustify(CENTER_TEXT, CENTER_TEXT, p);
+    outtextxy(65, 25, "重新开始", p);
+    putimage(270, 720, p);
+    delimage(p);
 
-    while (mousemsg()) {
-        msg = getmouse();
-        if (msg.is_left() && msg.is_down()) {
-            if (270 < msg.x && msg.x < 270 + 130 && 720 < msg.y && msg.y < 720 + 50) {
-                init_game();
-            } else if (40 < msg.x && msg.x < 170 && 650 < msg.y && msg.y < 780) {
-                cheat_count++;
-            } else if (40 < msg.x && msg.x < 170 && 780 < msg.y && msg.y < 960) {
-                manage_count++;
-            }
+    PIMAGE Azusa = newimage();
+    getimage_pngfile(Azusa, "./assets/anime_girl_PNG73.png");
+    putimage_withalpha(nullptr, Azusa, 0, (LG_LENGTH + SPACING) * 4 + SPACING * 4);
+    delimage(Azusa);
+    update();
+
+    for (; ; delay_fps(FPS)) {
+
+        if (cheat_count == 8) {
+            MessageBox(NULL, "作弊模式已开启", "呃呃", NULL);
+            cheat_count++;
         }
-    }
 
-    if (put_score() == 0) {
-        setcolor(EGERGB(0x29, 0x29, 0x35));
-        setfont(25, 0, "仿宋");
-        xyprintf(230, 800, "在控制台中输入姓名：");
-        if (is_fresh == 0) {
-            is_fresh++;
+        if (manage_count == 5) {
+            manage_count = 0;
             return;
         }
-        write_to_file();
-        return;
-    }
 
-    //按键检测
-    int direction = -1;
+        mouse_msg msg = {0};
 
-    while (kbmsg()) {
-        key_msg keyMsg = getkey();
-        if (keyMsg.msg == key_msg_down) {
-            switch (keyMsg.key) {
-                case 'A':
-                case key_left:
-                    direction = 3;
-                    break;
-                case 'W':
-                case key_up:
-                    direction = 1;
-                    break;
-                case 'D':
-                case key_right:
-                    direction = 4;
-                    break;
-                case 'S':
-                case key_down:
-                    direction = 2;
-                    break;
+        while (mousemsg()) {
+            msg = getmouse();
+            if (msg.is_left() && msg.is_down()) {
+                if (270 < msg.x && msg.x < 270 + 130 && 720 < msg.y && msg.y < 720 + 50) {
+                    init_game();
+                } else if (40 < msg.x && msg.x < 170 && 650 < msg.y && msg.y < 780) {
+                    cheat_count++;
+                } else if (40 < msg.x && msg.x < 170 && 780 < msg.y && msg.y < 960) {
+                    manage_count++;
+                }
+            }
+        }
+
+        if (put_score() == 0) {
+            write_to_file();
+            continue;
+        }
+
+        //按键检测
+        int direction = -1;
+
+        while (kbmsg()) {
+            key_msg keyMsg = getkey();
+            if (keyMsg.msg == key_msg_down) {
+                switch (keyMsg.key) {
+                    case 'A':
+                    case key_left:
+                        direction = 3;
+                        break;
+                    case 'W':
+                    case key_up:
+                        direction = 1;
+                        break;
+                    case 'D':
+                    case key_right:
+                        direction = 4;
+                        break;
+                    case 'S':
+                    case key_down:
+                        direction = 2;
+                        break;
+                }
+            }
+        }
+
+        if (direction != -1) {
+            move(direction);
+            if (moved) {
+                update();
+                add_random();
             }
         }
     }
 
-    if (direction != -1) {
-        move(direction);
-        if (moved) {
-            update();
-            add_random();
+}
+
+void put_record() {
+    cleardevice();
+
+    setcolor(BLACK);
+    setfont(24, 0, "黑体");
+    xyprintf(80, 30, "修改");
+    xyprintf(280, 30, "删除");
+    xyprintf(420, 30, "返回游戏");
+
+    Player players[1000];
+    int number = read_player(players);
+
+    int y = 100;
+    setcolor(EGERGB(0x29, 0x29, 0x35));
+    setfont(30, 0, "黑体");
+
+    xyprintf(240, y, "最高纪录");
+    y += 30;
+    xyprintf(50, y, "---------------------------------");
+    y += 20;
+    xyprintf(50, y, "|      id       |     得分      |");
+    y += 30;
+    for (int i = 0; i < number; ++i) {
+        xyprintf(50, y, "---------------------------------");
+        y += 20;
+        xyprintf(50, y, "| %-14s| %-14d|", players[i].username, players[i].record);
+        y += 30;
+    }
+    xyprintf(50, y, "---------------------------------");
+
+}
+
+void modify_player() {
+    char username[30];
+    Player players[1000];
+
+    inputbox_getline("修改记录", "输入id，输完后按回车", username, 20);
+    int number = read_player(players);
+    for (int i = 0; i < number; i++) {
+        if (strcmp(players[i].username, username) == 0) {
+            char _score[20];
+            inputbox_getline("修改记录", "找到id了，输入要修改的分数，输完后按回车", _score, 20);
+            players[i].record = atoi(_score);
+            write_players(players, number);
+            MessageBox(0, "修改成功", "呃呃", 0);
+            return;
         }
     }
+    MessageBox(0, "很遗憾，没有找到匹配id，无法修改", "呃呃", 0);
+
 }
 
-void manageMode() {
-    cleardevice();
-}
-int main() {
+void delete_player() {
+    char username[30];
+    Player players[1000];
 
-    fp = fopen("record.txt", "a+b");
-    if (fp == NULL) {
-        printf("open file error");
+    inputbox_getline("删除记录", "输入id，输完后按回车", username, 20);
+    int number = read_player(players);
+    int t = -1;
+    for (int i = 0; i < number; i++) {
+        if (strcmp(players[i].username, username) == 0) {
+            t = i;
+            break;
+        }
     }
 
+    if (t != -1) {
+        for (int i = t; i < number - 1; i++) {
+            players[i] = players[i + 1];
+        }
+        write_players(players, number - 1);
+        MessageBox(0, "删除成功", "呃呃", 0);
+    } else {
+        MessageBox(0, "很遗憾，没有找到匹配id，无法删除", "呃呃", 0);
+    }
 
+}
+void manageMode() {
+
+    put_record();
+
+    for (; ; delay_fps(FPS)) {
+
+        mouse_msg msg = {0};
+
+        while (mousemsg()) {
+            msg = getmouse();
+            if (msg.is_left() && msg.is_down()) {
+                if (80 < msg.x && msg.x < 165 + 130 && 30 < msg.y && msg.y < 60) {
+                    modify_player();
+                    put_record();
+                } else if (280 < msg.x && msg.x < 340 && 30 < msg.y && msg.y < 60) {
+                    delete_player();
+                    put_record();
+                } else if (420 < msg.x && msg.x < 520 && 30 < msg.y && msg.y < 60) {
+                    return;
+                }
+            }
+        }
+    }
+
+}
+int main() {
 
     initgraph(640, 960);
     setcaption("2048");
@@ -634,16 +809,10 @@ int main() {
 
     init_game();
 
-
-
-    for (; is_run(); delay_fps(FPS)) {
-        if (game_mode) {
-            gameMode();
-        } else {
-            manageMode();
-        }
+    while (is_run()) {
+        gameMode();
+        manageMode();
     }
 
-    fclose(fp);
     closegraph();
 }
